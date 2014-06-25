@@ -156,7 +156,7 @@ function getPackages() {
 				$('.container-packages').addClass('show-this');
 				var concatHtml = "";
 				for(var i = 0; i < result.length; i++) {
-					concatHtml += "<p>" + result[i] + "</p>"; 
+					concatHtml += "<p>" + result[i] + "</p><br/>"; 
 				}
 				$('.package-list')[0].innerHTML = concatHtml;
 				$("#LoadingImage").hide();
