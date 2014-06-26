@@ -281,5 +281,27 @@ public class Utils {
         }
         return null;
     }
+    
+    /**
+     * Get full ADB path depending on OS
+     * @param sdkPath
+     * @return fullADBPath
+     * @throws IOException
+     */
+    public static String getADBPath(final String sdkPath) throws IOException {
+        final String fullADBPath;
+        switch (Utils.getOperatingSystemType()) {
+            case Windows:
+            	fullADBPath = sdkPath+"/platform-tools/adb.exe";
+                return fullADBPath;
+            case Linux:
+            case MacOS:
+            	fullADBPath = sdkPath+"/platform-tools/adb";
+                return fullADBPath;
+            default:
+                break;
+        }
+        throw new IOException("Unsupported platform");
+    }
 
 }

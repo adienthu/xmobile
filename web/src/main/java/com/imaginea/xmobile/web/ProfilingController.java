@@ -48,7 +48,6 @@ public class ProfilingController {
 
 	@RequestMapping(method=RequestMethod.GET, value="/connected")
 	public @ResponseBody String connected() {
-		//return Boolean.toString(profilingService.isDeviceConnected());
-		return "true";
+		return Boolean.toString(profilingService.isDeviceConnected());
 	}
 }

@@ -5,6 +5,7 @@ import java.util.Map;
 import org.springframework.stereotype.Component;
 
 import com.android.ddmlib.AndroidDebugBridge;
+import com.imaginea.instrumentation.Utils;
 import com.imaginea.profiling.ADBCommand.ProfilingData;
 import com.imaginea.profiling.AndroidProfiler;
 
@@ -50,8 +51,13 @@ public class ProfilingServiceImpl implements ProfilingService {
 	@Override
 	public boolean isDeviceConnected() {
 		AndroidDebugBridge.initIfNeeded(false);
-        AndroidDebugBridge debugBridge = AndroidDebugBridge.createBridge(SystemProperties.getAndroidSdkPath() +
-        		 "/platform-tools/adb.exe", true);
+        AndroidDebugBridge debugBridge = null;
+		try {
+			debugBridge = AndroidDebugBridge.createBridge(Utils.getADBPath(SystemProperties.getAndroidSdkPath()), true);
+		} catch (Exception e1) {
+			// TODO Auto-generated catch block
+			e1.printStackTrace();
+		}
         try {
 			Thread.sleep(1000);
 		} catch (InterruptedException e) {
