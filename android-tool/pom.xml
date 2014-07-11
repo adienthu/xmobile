@@ -24,15 +24,11 @@
 			<version>3.0.9</version>
 		</dependency>
 		<dependency>
-			<groupId>${project.groupId}</groupId>
-			<version>${project.version}</version>
-			<artifactId>android-tool-tess4j.jar</artifactId>
-		</dependency>
-		<dependency>
-			<groupId>${project.groupId}</groupId>
-			<version>${project.version}</version>
-			<artifactId>android-tool-jai_imageio.jar</artifactId>
-		</dependency>
+		      <groupId>${project.groupId}</groupId>
+		      <version>[${project.version}]</version>
+		      <artifactId>3rdparty-jars</artifactId>
+		      <type>pom</type>
+	    </dependency>
 		<dependency>
 			<groupId>com.android.tools.ddms</groupId>
 			<artifactId>ddmlib</artifactId>
@@ -49,29 +45,6 @@
 					<source>1.7</source>
 					<target>1.7</target>
 				</configuration>
-			</plugin>
-			<plugin>
-				<groupId>com.googlecode.addjars-maven-plugin</groupId>
-				<artifactId>addjars-maven-plugin</artifactId>
-				<version>1.0.5</version>
-				<executions>
-					<execution>
-						<goals>
-							<goal>add-jars</goal>
-						</goals>
-						<configuration>
-							<resources>
-								<resource>
-									<directory>${basedir}/libs</directory>
-									<includes>
-										<include>jai_imageio.jar</include>
-										<include>tess4j.jar</include>
-									</includes>
-								</resource>
-							</resources>
-						</configuration>
-					</execution>
-				</executions>
 			</plugin>
 		</plugins>
 	</build>

@@ -10,6 +10,7 @@
   <packaging>pom</packaging>
 
     <modules>
+    	<module>3rdparty-jars</module>
 		<module>android-tool</module>
 		<module>web</module>
     </modules>
