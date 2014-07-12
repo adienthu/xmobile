@@ -10,7 +10,7 @@
 		<version>0.0.1-SNAPSHOT</version>
 	</parent>
         
-  <artifactId>3rparty-jars</artifactId>
+  <artifactId>3rdparty-jars</artifactId>
   <packaging>pom</packaging>
         
   <build>
