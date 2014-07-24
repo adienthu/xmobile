@@ -71,7 +71,7 @@ public class AppRater {
     private final int GC_CALLS_FAIR = 10;
 
     /** The Constant NUMBER_OF_RULES. */
-    private final int NUMBER_OF_RULES = 4;
+    private final int NUMBER_OF_RULES = 5;
 
     /** The grade launch time. */
     private int mGradeLaunchTime = 0;
@@ -84,6 +84,15 @@ public class AppRater {
 
     /** The grade gc. */
     private int mGradeGC = 0;
+    
+    /** Stability grade */
+    private int mGradeStability = 0;
+    
+    /** Boolean value to record crash */
+    private boolean mAppCrashed;
+    
+    /** Count of ANRs */
+    private int mANRCount;
 
     /** The m activity grade map. */
     public Map<String, String> activitiesGrade = new HashMap<String, String>();
@@ -177,6 +186,22 @@ public class AppRater {
             return SCORE_A;
         }
     }
+    
+    /**
+     * Rate stability
+     * 
+     * @param anrStackTrace 
+     * 					ANR stack trace
+     * @param crashStackTrace
+     * 					Crash stack trace
+     * @return SCORE_D if either crash or ANR occurred, else SCORE_A
+     */
+    private int rateStability(final String anrStackTrace, final String crashStackTrace) {
+    	if (anrStackTrace == null && crashStackTrace == null)
+    		return SCORE_A;
+    	else
+    		return SCORE_D;
+    }
 
     /**
      * Rate activity.
@@ -195,7 +220,7 @@ public class AppRater {
      */
     private String rateActivity(final String activityName,
             final long launchTime, final int activitiesInStack,
-            final String overdraws, final int noOfGC) {
+            final String overdraws, final int noOfGC, final String anrStackTrace, final String crashStackTrace) {
         // launch time grade
         final int launchTimeGrade = rateLaunchTime(launchTime);
         // Activity stack grade
@@ -204,9 +229,11 @@ public class AppRater {
         final int overDrawGrade = rateOverdraws(overdraws);
         // GC grade
         final int gcCallsGrade = rateGCCalls(noOfGC);
+        // Stability grade
+        final int stabilityGrade = rateStability(anrStackTrace, crashStackTrace);
         // calculate grade
         final int grade = (launchTimeGrade + activitiesInStackGrade
-                + overDrawGrade + gcCallsGrade)
+                + overDrawGrade + gcCallsGrade + stabilityGrade)
                 / NUMBER_OF_RULES;
 
         if (grade >= GRADE_A) {
@@ -237,10 +264,10 @@ public class AppRater {
      */
     public void calculateGrades(final String activityName,
             final long launchTime, final int numberOfActivitiesInStack,
-            final String noOfOverDraws, final int noOfGC) {
+            final String noOfOverDraws, final int noOfGC, final String anrStackTrace, final String crashStackTrace) {
 
         final String rank = rateActivity(activityName, launchTime,
-                numberOfActivitiesInStack, noOfOverDraws, noOfGC);
+                numberOfActivitiesInStack, noOfOverDraws, noOfGC, anrStackTrace, crashStackTrace);
 
         activitiesGrade.put(activityName, rank);
         /* Calculate Launch time Rating */
@@ -252,8 +279,17 @@ public class AppRater {
         /* Calculate Activity Stack Rating */
         mGradeActivityStack = mGradeActivityStack
                 + rateActivityStack(numberOfActivitiesInStack);
+        /* Calculate Stability Rating */
+        mGradeStability = mGradeStability + rateStability(anrStackTrace, crashStackTrace);
     }
-
+    
+    /**
+     * Record app crash event
+     */
+    public void recordAppCrash() {
+    	mAppCrashed = true;
+    }
+    
     /**
      * Gets the rank.
      * 
@@ -331,7 +367,18 @@ public class AppRater {
         }
         return overdrawGrade;
     }
-
+    
+    /**
+     * Gets the overall stability score
+     */
+    public int getStabilityScore() {
+    	if(activitiesGrade.size() == 0) {
+    		return 0;
+    	}
+    	int stabilityGrade = mGradeStability / activitiesGrade.size();
+    	return stabilityGrade;
+    }
+    
     /**
      * Gets the application score.
      * 
@@ -339,7 +386,7 @@ public class AppRater {
      */
     public int getApplicationScore() {
         final int finalScore = (getLaunchTimeScore() + getGCCallsScore()
-                + getOverDrawScore() + getActivityStackScore())
+                + getOverDrawScore() + getActivityStackScore() + getStabilityScore())
                 / NUMBER_OF_RULES;
         return finalScore;
 
@@ -351,9 +398,7 @@ public class AppRater {
      * @return the application rating
      */
     public String getApplicationRating() {
-        final int finalScore = (getLaunchTimeScore() + getGCCallsScore()
-                + getOverDrawScore() + getActivityStackScore())
-                / NUMBER_OF_RULES;
+        int finalScore = getApplicationScore();
         final String rank = getRating(finalScore);
         return rank;
     }

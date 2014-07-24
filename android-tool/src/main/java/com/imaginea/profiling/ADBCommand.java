@@ -16,6 +16,7 @@ import java.io.IOException;
 import java.io.Serializable;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Scanner;
@@ -96,6 +97,12 @@ public class ADBCommand {
 
     /** The over draw data. */
     private final Map<String, String> mOverDrawData = new HashMap<String, String>();
+    
+    /** The ANR stack trace data. Key is activity name and value is stack trace */
+    private final Map<String, String> mANRData = new HashMap<String, String>();
+    
+    /** The crash log data. Key is activity name and value is stack trace */
+    private final Map<String, String> mCrashData = new HashMap<String, String>();
 
     /** The profiling items. */
     public final HashMap<String, ProfilingData> profilingItems = new HashMap<String, ProfilingData>();
@@ -111,7 +118,7 @@ public class ADBCommand {
     public HashMap<String, ProfilingData> getProfilingItems() {
         return profilingItems;
     }
-
+    
     /**
      * Instantiates a new ADB command.
      * 
@@ -210,7 +217,7 @@ public class ADBCommand {
                     p.getErrorStream()));
             String line = "";
             while ((line = standardIn.readLine()) != null) {
-                if (line.contains("FragmentManager")) {
+            	if (line.contains("FragmentManager")) {
                     filterLogcatFragmentCalls(line);
                 }
             }
@@ -259,7 +266,7 @@ public class ADBCommand {
             execGCCommand(false);
         }
     }
-
+    
     /**
      * This Method is used to Capture the screen shot.
      */
@@ -403,6 +410,14 @@ public class ADBCommand {
                     .replaceAll("\\s", "");
         }
     }
+    
+    /**
+     * Filter log text
+     * 
+     * @param line
+     * 			  the line 
+     */
+   
 
     /**
      * Connected devices.
@@ -554,7 +569,80 @@ public class ADBCommand {
         retoutput = processOutput(p);
         return retoutput;
     }
-
+    
+    /**
+     * Gets the stack trace of main thread when ANR occurs.
+     * adb shell cat /data/anr/traces.txt
+     * 
+     *  @return string containing stack trace
+     */
+    private String execANRStackTraceCommand() {
+    	String trace = null;
+    	final Process p = customExec(new String[] { mADBPath, "shell", "cat",
+                "/data/anr/traces.txt" });
+    	try {
+    		p.waitFor();
+            final java.io.BufferedReader standardIn = new java.io.BufferedReader(
+                    new java.io.InputStreamReader(p.getInputStream()));
+            
+            String line = "";
+            boolean shudExtract = false;
+            // extract the trace starting from line containing the string "main"
+        	// and stop at the double newline
+            while ((line = standardIn.readLine()) != null) {
+            	if (line.contains("\"main\"")) {
+            		shudExtract = true;
+            	}
+            	if (shudExtract && line.trim().isEmpty())
+            		break;
+            	if(shudExtract) {
+            		if (trace == null) trace = "";
+            		trace += line + "\n";
+            	}
+            		
+            }
+            
+        } catch (final java.io.IOException e) {
+            e.printStackTrace();
+        } catch (final InterruptedException e) {
+        	e.printStackTrace();
+        }
+    	if(trace == null) {
+    		System.out.println("ADBCommand: No ANR trace in traces.txt!");
+    	}
+    	return trace;
+    }
+    
+    /**
+     * Gets the stack trace when crash occurs. All lines containing string "E/AndroidRuntime" considered part of log.
+     * adb logcat -d | grep E/AndroidRuntime
+     * 
+     * @return string containing stack trace
+     */
+    private String execCrashLogCommand() {
+    	String trace = null;
+    	final Process p = customExec(new String[] { mADBPath, "logcat", "-d", "|",
+                "grep", "E/AndroidRuntime" });
+    	try {
+    		p.waitFor();
+    		final java.io.BufferedReader standardIn = new java.io.BufferedReader(
+                    new java.io.InputStreamReader(p.getInputStream()));
+    		
+    		String line = "";
+            while ((line = standardIn.readLine()) != null) {
+            	if (trace == null) trace = "";
+            	// Get the index of colon
+            	int colonIndex = line.indexOf(':');
+            	// Actual log starts after colon
+            	String logLine = line.substring(colonIndex+1);
+            	trace += logLine + "\n";	
+            }
+    	}catch (final IOException | InterruptedException e) {
+    		e.printStackTrace();
+    	}
+    	return trace;
+    }
+    
     /**
      * Filter activity name.
      * 
@@ -905,8 +993,26 @@ public class ADBCommand {
                 }
             }, OVERDRAW_DELAY, OVERDRAW_OCCUR_TIME);
             filterLaunchInfo(line);
+        } else if (line.contains("am_anr")) {
+        	if (mActivityName != null) {
+        		try {
+					Thread.sleep(1000);
+					String trace = execANRStackTraceCommand();
+					synchronized(mANRData) {
+						mANRData.put(mActivityName, trace);
+					}
+				} catch (InterruptedException e) {
+					e.printStackTrace();
+				}
+        	}
+        } else if (line.contains("am_crash")) {
+        	if (mActivityName != null) {
+        		String trace = execCrashLogCommand();
+				synchronized(mCrashData) {
+					mCrashData.put(mActivityName, trace);
+				}
+        	}
         }
-
     }
 
     /**
@@ -966,9 +1072,11 @@ public class ADBCommand {
                     profileData.getValue().mActivityStackCount,
                     profileData.getValue().mNoOfOverdraws,
                     profileData.getValue().mGCCalls[1]
-                            + profileData.getValue().mGCCalls[0]);
+                            + profileData.getValue().mGCCalls[0],
+                    profileData.getValue().getANRStackTrace(),
+                    profileData.getValue().getCrashStackTrace());
         }
-
+        
         // Disable overdraws
         final String[] DISABLE_OVERDRAW = new String[] { mADBPath, "shell",
                 "setprop", "debug.hwui.overdraw", "false" };
@@ -1015,6 +1123,8 @@ public class ADBCommand {
         long launchTime = 0;
         String noOfOverDraws = null;
         final String activityStackLog = exceActivityStackCommand(mPackageName);
+        String anrStackTrace = null;
+        String crashStackTrace = null;
 
         for (final Map.Entry<String, Long> entry : mActivitiesData.entrySet()) {
             int numberOfActivitiesInStack = 0;
@@ -1050,10 +1160,24 @@ public class ADBCommand {
                     }
                 }
             }
-
+            
+            /*
+             * Gets the ANR stack trace using activity name as key
+             */
+            synchronized(mANRData) {
+            	anrStackTrace = mANRData.get(activityName);
+            }
+            
+            /*
+             * Gets the crash stack trace using activity name as key
+             */
+            synchronized(mCrashData) {
+            	crashStackTrace = mCrashData.get(activityName);
+            }
+            
             profilingItems.put(activityName, new ProfilingData(launchTime,
                     mGCData.get(activityName), numberOfActivitiesInStack,
-                    noOfOverDraws));
+                    noOfOverDraws, anrStackTrace, crashStackTrace));
 
         }
 
@@ -1142,7 +1266,12 @@ public class ADBCommand {
 
         /** The m no of overdraws. */
         private final String mNoOfOverdraws;
-
+        
+        /** The ANR stack trace */
+        private final String mANRStackTrace;
+        
+        /** The crash stack trace */
+        private final String mCrashStackTrace;
         /**
          * Instantiates a new profiling data.
          * 
@@ -1156,11 +1285,13 @@ public class ADBCommand {
          *            the no of overdraws
          */
         ProfilingData(final long launchTime, final int[] gcCalls,
-                final int activityStackCount, final String noOfOverdraws) {
+                final int activityStackCount, final String noOfOverdraws, final String anrStackTrace, final String crashStackTrace) {
             mLaunchTime = launchTime;
             mGCCalls = gcCalls;
             mActivityStackCount = activityStackCount;
             mNoOfOverdraws = noOfOverdraws;
+            mANRStackTrace = anrStackTrace;
+            mCrashStackTrace = crashStackTrace;
         }
 
         /**
@@ -1198,5 +1329,23 @@ public class ADBCommand {
         public String getOverDraws() {
             return mNoOfOverdraws;
         }
+
+		/**
+		 * Gets the main thread stack trace at the time of ANR
+		 * 
+		 * @return the stack trace
+		 */
+		public String getANRStackTrace() {
+			return mANRStackTrace;
+		}
+		
+		/**
+		 * Gets the stack trace at the time of crash
+		 * 
+		 * @return the stack trace
+		 */
+		public String getCrashStackTrace() {
+			return mCrashStackTrace;
+		}
     }
 }

@@ -11,6 +11,7 @@
  ******************************************************************************/
 package com.imaginea.profiling;
 
+import java.util.ArrayList;
 import java.util.Map;
 
 import com.imaginea.profiling.ADBCommand.ProfilingData;
@@ -190,7 +191,7 @@ public final class AndroidProfiler {
 
         return sAdb.getProfilingItems();
     }
-
+    
     /**
      * Gets the application score. This method will provide the overall
      * application score on a scale of 100
@@ -244,6 +245,13 @@ public final class AndroidProfiler {
      */
     public int getLaunchTimeScore() {
         return sAppRater.getLaunchTimeScore();
+    }
+    
+    /**
+     * Gets the stability score for application
+     */
+    public int getStabilityScore() {
+    	return sAppRater.getStabilityScore();
     }
 
     /**

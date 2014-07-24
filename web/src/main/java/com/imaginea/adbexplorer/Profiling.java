@@ -13,6 +13,7 @@
  ******************************************************************************/
 package com.imaginea.adbexplorer;
 
+import java.util.ArrayList;
 import java.util.Map;
 import java.util.Scanner;
 
@@ -93,10 +94,11 @@ public class Profiling {
      */
     private static void initProfiling(final String sdkHomePath) {
         
-        System.out
-        .format("-------------------------------------------------------%n");
-        System.out.printf("Please Enter your password: %n");
-        String password = sIn.nextLine();
+       System.out
+       .format("-------------------------------------------------------%n");
+       System.out.printf("Please Enter your password: %n");
+       String password = sIn.nextLine();
+    	String password = "";
         // Instantiate a new class profiling
         sProfiling = new AndroidProfiler(sdkHomePath, password);
         
@@ -186,6 +188,7 @@ public class Profiling {
         System.out.println("Please enter a android sdk path : ");
         sIn = new Scanner(System.in);
         final String sdkHome = sIn.nextLine();
+        
         // Initialize package Info class and starts initialing paths and
         // Profiler library
         initProfiling(sdkHome);
@@ -260,12 +263,50 @@ public class Profiling {
 
             }
         }
+        
+        // ANR
+        System.out
+                .format("-------------------------------------------------------%n");
+        System.out
+                .printf("%n                  ANR                  %n");
+        System.out
+                .format("-------------------------------------------------------%n");
+        for (final Map.Entry<String, com.imaginea.profiling.ADBCommand.ProfilingData> profilingItem : profilingMap
+                .entrySet()) {
+        	if (profilingItem.getKey() != null) {
+        		if(profilingItem.getValue().getANRStackTrace() != null) {
+        			System.out.println("\n" + profilingItem.getKey() + " :\n");
+        			System.out.println(profilingItem.getValue().getANRStackTrace());
+        		}else {
+        			System.out.println("\n" + profilingItem.getKey() + " :  No ANR");
+        		}
+        	}
+        }
+
+        // Crash log
+        System.out
+        		.format("-------------------------------------------------------%n");
+        System.out
+        		.printf("%n                  Crash                  %n");
+        System.out
+        		.format("-------------------------------------------------------%n");
+        for (final Map.Entry<String, com.imaginea.profiling.ADBCommand.ProfilingData> profilingItem : profilingMap
+        		.entrySet()) {
+        	if (profilingItem.getKey() != null) {
+        		if(profilingItem.getValue().getCrashStackTrace() != null) {
+        			System.out.println("\n" + profilingItem.getKey() + " :\n");
+        			System.out.println(profilingItem.getValue().getCrashStackTrace());
+        		}else {
+        			System.out.println("\n" + profilingItem.getKey() + " :  No Crash");
+        		}
+        	}
+        }
 
         // Display Grades
         System.out
                 .format("-------------------------------------------------------%n");
         System.out
-                .printf("%n                  Display Grades                  %n");
+                .printf("%n                  Activity Grades                  %n");
         System.out
                 .format("-------------------------------------------------------%n");
         /** The m activity grade map. */
@@ -302,7 +343,7 @@ public class Profiling {
 
             System.out.println("Overdraw Score : "
                     + sProfiling.getOverDrawScore());
-
+            
             // Over All Application Grade
             System.out
                     .format("-------------------------------------------------------%n");
