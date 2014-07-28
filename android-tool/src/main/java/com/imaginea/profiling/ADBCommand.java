@@ -993,7 +993,7 @@ public class ADBCommand {
                 }
             }, OVERDRAW_DELAY, OVERDRAW_OCCUR_TIME);
             filterLaunchInfo(line);
-        } else if (line.contains("am_anr")) {
+        } else if (line.contains("am_anr") && line.contains(mPackageName)) {
         	if (mActivityName != null) {
         		try {
 					Thread.sleep(1000);
@@ -1005,7 +1005,7 @@ public class ADBCommand {
 					e.printStackTrace();
 				}
         	}
-        } else if (line.contains("am_crash")) {
+        } else if (line.contains("am_crash") && line.contains(mPackageName)) {
         	if (mActivityName != null) {
         		String trace = execCrashLogCommand();
 				synchronized(mCrashData) {
