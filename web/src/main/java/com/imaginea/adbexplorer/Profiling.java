@@ -98,7 +98,7 @@ public class Profiling {
        .format("-------------------------------------------------------%n");
        System.out.printf("Please Enter your password: %n");
        String password = sIn.nextLine();
-    	String password = "";
+//    	String password = "";
         // Instantiate a new class profiling
         sProfiling = new AndroidProfiler(sdkHomePath, password);
         
