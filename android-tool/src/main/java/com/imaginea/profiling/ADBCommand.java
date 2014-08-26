@@ -574,9 +574,10 @@ public class ADBCommand {
      * Gets the stack trace of main thread when ANR occurs.
      * adb shell cat /data/anr/traces.txt
      * 
+     * @param pid process id of app under test 
      *  @return string containing stack trace
      */
-    private String execANRStackTraceCommand() {
+    private String execANRStackTraceCommand(String pid) {
     	String trace = null;
     	final Process p = customExec(new String[] { mADBPath, "shell", "cat",
                 "/data/anr/traces.txt" });
@@ -585,7 +586,11 @@ public class ADBCommand {
             final java.io.BufferedReader standardIn = new java.io.BufferedReader(
                     new java.io.InputStreamReader(p.getInputStream()));
             
+            // Scroll down till we find the line with the right process id
             String line = "";
+            while ((line = standardIn.readLine()) != null)
+            	if(line.contains(pid))
+            		break;
             boolean shudExtract = false;
             // extract the trace starting from line containing the string "main"
         	// and stop at the double newline
@@ -614,15 +619,25 @@ public class ADBCommand {
     }
     
     /**
-     * Gets the stack trace when crash occurs. All lines containing string "E/AndroidRuntime" considered part of log.
+     * Gets the stack trace when crash occurs. 
+     * All lines containing string "E/AndroidRuntime" followed by the app pid are considered part of log.
      * adb logcat -d | grep E/AndroidRuntime
      * 
+     * Example trace:
+     * E/AndroidRuntime( 3752): FATAL EXCEPTION: main
+     * E/AndroidRuntime( 3752): Process: com.example.simplerestclient, PID: 3752
+     * E/AndroidRuntime( 3752): java.lang.NullPointerException
+     * E/AndroidRuntime( 3752): 	at com.example.simplerestclient.MainActivity.clearResults(MainActivity.java:500)
+	 * E/AndroidRuntime( 3752): 	at com.example.simplerestclient.MainActivity.access$1(MainActivity.java:497)
+     * 
+     * @param pid process id of app unter test
      * @return string containing stack trace
      */
-    private String execCrashLogCommand() {
+    private String execCrashLogCommand(String pid) {
+    	String grepInput = "E/AndroidRuntime( " + pid + ")";
     	String trace = null;
     	final Process p = customExec(new String[] { mADBPath, "logcat", "-d", "|",
-                "grep", "E/AndroidRuntime" });
+                "grep", grepInput });
     	try {
     		p.waitFor();
     		final java.io.BufferedReader standardIn = new java.io.BufferedReader(
@@ -994,10 +1009,19 @@ public class ADBCommand {
             }, OVERDRAW_DELAY, OVERDRAW_OCCUR_TIME);
             filterLaunchInfo(line);
         } else if (line.contains("am_anr") && line.contains(mPackageName)) {
+        	/*
+        	 * Sample log (Samsung S4 Mini):
+        	 * I/am_anr  (  967): [0,25545,com.example.simplerestclient,8961606,Input dispatching timed out (Waiting because the touched window has not finished processing the input events that were previously delivered to it.)]
+        	 */
         	if (mActivityName != null) {
         		try {
-					Thread.sleep(1000);
-					String trace = execANRStackTraceCommand();
+        			// Extract the pid from log
+        			int beginIdx = line.indexOf(",")+1;
+        			int endIdx = line.indexOf(",",beginIdx);
+        			String pid = line.substring(beginIdx, endIdx);
+        			// Stack trace takes a while to be written so wait
+					Thread.sleep(1000); 
+					String trace = execANRStackTraceCommand(pid);
 					synchronized(mANRData) {
 						mANRData.put(mActivityName, trace);
 					}
@@ -1006,8 +1030,18 @@ public class ADBCommand {
 				}
         	}
         } else if (line.contains("am_crash") && line.contains(mPackageName)) {
+        	/*
+        	 * Sample log (Samsung S4 Mini):
+        	 * I/am_crash(  967): [3752,0,com.example.simplerestclient,11058758,java.lang.NullPointerException,NULL,MainActivity.java,500]
+        	 */
         	if (mActivityName != null) {
-        		String trace = execCrashLogCommand();
+        		// Extract the pid from log
+    			int beginIdx = line.indexOf(":")+1;
+    			int endIdx = line.indexOf(",",beginIdx);
+    			String pid = line.substring(beginIdx, endIdx);
+    			pid = pid.trim();
+    			pid = pid.replace("[", ""); // for samsung devices
+        		String trace = execCrashLogCommand(pid);
 				synchronized(mCrashData) {
 					mCrashData.put(mActivityName, trace);
 				}
