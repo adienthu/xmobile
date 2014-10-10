@@ -64,6 +64,7 @@ public class Baksmali
     localbaksmaliOptions.outputDirectory = paramString2;
     localbaksmaliOptions.transform = true;
 //    localbaksmaliOptions.outputDebugInfo = Platform.inDebugMode();
+    localbaksmaliOptions.outputTransformInfo = true;
     return baksmali.disassembleDexFile(localDexBackedDexFile, localbaksmaliOptions);
   }
 
