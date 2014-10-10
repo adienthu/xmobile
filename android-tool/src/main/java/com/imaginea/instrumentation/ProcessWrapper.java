@@ -47,10 +47,23 @@ public class ProcessWrapper {
             final Process process = mBuilder.start();
             localBufferedReader = new BufferedReader(new InputStreamReader(
                     process.getInputStream()));
-            while (localBufferedReader.readLine() != null) {
-                // System.out.println("ProcessWrapper " + str2);
+            System.out.println("Running command: " + mBuilder.command());
+            String line = null;
+            boolean warnings = false;
+            while ((line = localBufferedReader.readLine()) != null) {
+                 System.out.println("[process] " + line);
+                 if (line.toLowerCase().contains("warning")) {
+                	 warnings = true;
+                 }
             }
-            process.waitFor();
+            int exitCode = process.waitFor();
+            if (exitCode != 0) {
+            	System.out.println("The process exited with errors. Exit Code: " + exitCode);
+            	return false;
+            }else if (warnings) {
+            	System.out.println("The process exited with warnings");
+//            	return false;
+            }
             return true;
         } catch (final InterruptedException localInterruptedException) {
             System.out.println("ProcessWrapper Interrupted executing command "

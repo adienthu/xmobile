@@ -36,14 +36,16 @@ public class Instrumentation {
      * 
      * @param outputDir
      *            the output directory
+     * @return 
      */
-    public void convertDex2jar(final String inputDir, final String apkname) {
+    public boolean convertDex2jar(final String inputDir, final String apkname) {
         // Dex to jar converter
         try {
-            Dex2Jar.convertDex2jar(inputDir + "/" + apkname);
+            return Dex2Jar.convertDex2jar(inputDir + "/" + apkname);
         } catch (final IOException e) {
             e.printStackTrace();
         }
+        return false;
     }
 
     /**
@@ -61,7 +63,7 @@ public class Instrumentation {
         }
         return ret;
     }
-
+    
     /**
      * Jar2 dex converter.
      * 
@@ -70,18 +72,19 @@ public class Instrumentation {
      * @param outputDir
      *            the output directory
      */
-    public void jar2DexConverter(final String workingDirectory,
+    public boolean jar2DexConverter(final String workingDirectory,
             final File outputDir) {
         // convert Dex to jar
+    	boolean result = false;
         try {
-            Dex2Jar.convertjar2dex(workingDirectory + ASPECT_DEX2JAR);
+            result = Dex2Jar.convertjar2dex(workingDirectory + ASPECT_DEX2JAR);
             // Now copy generated dex file to Instrumentation Package
             Utils.move(workingDirectory + "/classes.dex",
                     outputDir.getAbsolutePath());
         } catch (final IOException e) {
             e.printStackTrace();
         }
-
+        return result;
     }
 
     /**
@@ -90,13 +93,14 @@ public class Instrumentation {
      * @param outputDir
      *            the output directory
      */
-    public void repackageApk(final String outputDir) {
+    public boolean repackageApk(final String outputDir) {
         /* Repackage the APK */
         try {
-            Apktool.repackage(outputDir, outputDir + INSTRUMENTATION_APK);
+            return Apktool.repackage(outputDir, outputDir + INSTRUMENTATION_APK);
         } catch (final IOException e) {
             e.printStackTrace();
         }
+		return false;
     }
 
     /**
@@ -154,12 +158,34 @@ public class Instrumentation {
      *            the output directory
      * @param apkName
      *            the apk name
+     * @return 
      */
-    public void unPackApk(final String inputDir, final String outputDir,
+    public boolean unPackApk(final String inputDir, final String outputDir,
             final String apkName) {
         // Unpack the APK File
         try {
-            Apktool.unpackApk(inputDir + "/" + apkName, outputDir);
+            return Apktool.unpackApk(inputDir + "/" + apkName, outputDir);
+        } catch (final IOException e) {
+            e.printStackTrace();
+        }
+        return false;
+    }
+    
+    /**
+     * Unpack apk with sources.
+     * 
+     * @param inputDir
+     *            the input directory
+     * @param outputDir
+     *            the output directory
+     * @param apkName
+     *            the apk name
+     */
+    public void unPackApkWithSource(final String inputDir, final String outputDir,
+            final String apkName) {
+        // Unpack the APK File
+        try {
+            Apktool.unpackApkWithSource(inputDir + "/" + apkName, outputDir);
         } catch (final IOException e) {
             e.printStackTrace();
         }

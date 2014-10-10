@@ -11,6 +11,7 @@
  ******************************************************************************/
 package com.imaginea.instrumentation;
 
+import java.io.File;
 import java.io.IOException;
 
 /**
@@ -32,25 +33,32 @@ public class JarSigner {
     public static boolean signUsingJDKSigner(final String apkPath,
             final SignatureInfo paramSignatureInfo, final String sdkPath)
             throws IOException {
-        final String instrumentationDir = Utils.getInstrumentationPath();
-        final String keyStorePath = instrumentationDir + "profiling.keystore";
-        ProcessBuilder localProcessBuilder = new ProcessBuilder(new String[] {
-                "jarsigner", "-sigalg", "MD5withRSA", "-digestalg", "SHA1",
-                "-keystore", keyStorePath, "-storepass", "pramati123", apkPath,
-                "Imaginea" });
-        new ProcessWrapper(localProcessBuilder).run();
+//        final String instrumentationDir = Utils.getInstrumentationPath();
+//        final String keyStorePath = instrumentationDir + "profiling.keystore";
+//        ProcessBuilder localProcessBuilder = new ProcessBuilder(new String[] {
+//                "jarsigner", "-sigalg", "MD5withRSA", "-digestalg", "SHA1",
+//                "-keystore", keyStorePath, "-storepass", "pramati123", apkPath,
+//                "Imaginea" });
+//        boolean result = false;
+//        result = new ProcessWrapper(localProcessBuilder).run();
+//        if (!result)
+//        	return false;
+        
+    	boolean result = false;
+    	ProcessBuilder localProcessBuilder = null;
         String keystoreLocation = null;
         String keystorePassword = null;
         String keyPassword = null;
         String keyAlias = null;
         if (paramSignatureInfo != null) {
             keystoreLocation = paramSignatureInfo.keystoreLocation;
+            File keystoreFile = new File(keystoreLocation);
             keystorePassword = paramSignatureInfo.keystorePassword;
             keyPassword = paramSignatureInfo.keyPassword;
             keyAlias = paramSignatureInfo.keyAlias;
-            if (keystoreLocation == null || keystoreLocation.trim().isEmpty()) {
+            if (!keystoreFile.exists()) {
                 System.out
-                        .println("JarSigner User enabled private key, but specified empty path for key store");
+                        .println("JarSigner User enabled private key, but specified wrong path for key store");
                 return false;
             }
         } else {
@@ -72,11 +80,21 @@ public class JarSigner {
 
         final ProcessWrapper localProcessWrapper = new ProcessWrapper(
                 localProcessBuilder);
-        localProcessWrapper.run();
+        result = localProcessWrapper.run();
+        if (!result)
+        	return false;
 
         // System.out.println("JarSigner Signed the APK. Now trying to align");
         final String srcDir = zipAlign(apkPath, sdkPath);
-        Utils.move(srcDir, apkPath);
+        if(srcDir == null) {
+        	System.out.println("zip aligning failed");
+        	return false;
+        }
+        
+        result = Utils.move(srcDir, apkPath);
+        if (!result)
+        	return false;
+        
         return true;
     }
 
@@ -104,7 +122,10 @@ public class JarSigner {
                         srcDir });
         final ProcessWrapper localProcessWrapper = new ProcessWrapper(
                 localProcessBuilder);
-        localProcessWrapper.run();
+        boolean result = false;
+        result = localProcessWrapper.run();
+        if(result == false)
+        	return null;
         // System.out.println("JarSigner Zip aligned the APK");
         return srcDir;
     }

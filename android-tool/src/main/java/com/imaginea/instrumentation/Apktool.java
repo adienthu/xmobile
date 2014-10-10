@@ -71,4 +71,24 @@ public class Apktool {
                 destPath });
 
     }
+    
+    /**
+     * Unpack apk with source files.
+     * 
+     * @param srcPath
+     *            the @param string1
+     * @param destPath
+     *            the @param string2
+     * @return true, if successful
+     * @throws IOException
+     *             Signals that an I/O exception has occurred.
+     */
+    public static boolean unpackApkWithSource(final String srcPath, final String destPath)
+            throws IOException {
+        // System.out.println("Unpacking the app ");
+        return Utils.execProcessBuilder(new String[] { Utils.getJavaPath(),
+                "-jar", getApktoolPath(), "d", "-f", "-r", srcPath,
+                destPath });
+
+    }
 }
