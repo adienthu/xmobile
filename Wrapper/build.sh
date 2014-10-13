@@ -1,9 +1,15 @@
 #!/bin/sh
 
 # Compile java
+if [ ! -d obj ]; then
+	mkdir obj
+fi	
 javac -d obj -bootclasspath $ANDROID_HOME/sdk/platforms/android-19/android.jar -classpath $ANDROID_HOME/sdk/extras/android/support/v4/android-support-v4.jar src/com/imaginea/instrumentation/*.java
 
 # Convert to dex
+if [ ! -d bin ]; then
+	mkdir bin
+fi
 $ANDROID_HOME/sdk/build-tools/android-4.4.2/dx --dex --output=bin/classes.dex obj/
 
 # Extract smali
