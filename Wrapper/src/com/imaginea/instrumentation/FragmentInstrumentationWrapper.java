@@ -1,12 +1,18 @@
 package com.imaginea.instrumentation;
 
+import android.util.Log;
+
 public class FragmentInstrumentationWrapper {
 	
+	private final static String TAG = "x-mobile";
+	
 	public static void enableDebugLogging() {
-		if(android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.HONEYCOMB)
-			android.app.FragmentManager.enableDebugLogging(true);
-		else
-			android.support.v4.app.FragmentManager.enableDebugLogging(true);
+		Log.i(TAG, "android.app.FragmentManager.enableDebugLogging(true)");
+		android.app.FragmentManager.enableDebugLogging(true);
 	}
 	
+	public static void enableDebugLoggingv4() {
+		Log.i(TAG, "android.support.v4.app.FragmentManager.enableDebugLogging(true)");
+		android.support.v4.app.FragmentManager.enableDebugLogging(true);
+	}
 }

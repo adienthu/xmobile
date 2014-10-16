@@ -1,10 +1,5 @@
 package com.imaginea.instrumentation.test;
 
-import static org.junit.Assert.*;
-
-import java.io.File;
-import java.io.IOException;
-
 import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Assert;
@@ -14,8 +9,6 @@ import org.junit.Test;
 import org.powermock.reflect.Whitebox;
 
 import com.imaginea.instrumentation.Baksmali;
-import com.imaginea.instrumentation.JarSigner;
-import com.imaginea.instrumentation.SignatureInfo;
 import com.imaginea.instrumentation.Utils;
 import com.imaginea.profiling.Instrumentation;
 
@@ -34,12 +27,10 @@ public class FragmentInstrumentationTest {
 	
 	private Instrumentation instrumentation;
 	private final String INPUT_DIR = "/Users/adityad/InstrumentationPackage";
-	private final String OUTPUT_DIR = INPUT_DIR + "/helloworld";
-	private final String APK_NAME = "com.example.helloworld-1.apk";//"SimpleRESTClient.apk";
-	private final String PACKAGE_NAME = "com.example.helloworld";
-	private final String PROFILING_KEYSTORE = "/InstrumentationPackage/profiling.keystore";
-	private final String INSTRUMENTATION_APK = "/Profiling.apk";
+	private final String OUTPUT_DIR = INPUT_DIR + "/out";
+	private final String APK_NAME = "com.imdb.mobile-1.apk";//"SimpleRESTClient.apk";
 	private final String SDK_PATH = "/Users/adityad/Developer/adt-bundle-mac-x86_64-20140321/sdk";
+	private final int HONEYCOMB_VERSION = 13;
 	
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
@@ -57,7 +48,7 @@ public class FragmentInstrumentationTest {
 	@After
 	public void tearDown() throws Exception {
 	}
-
+	
 	@Test
 	public void testUnPackApk() throws Exception {
 		boolean unpackSuccess = Whitebox.invokeMethod(instrumentation, "unPackApk", INPUT_DIR, OUTPUT_DIR, APK_NAME);
@@ -66,37 +57,22 @@ public class FragmentInstrumentationTest {
 	
 	@Test
 	public void testBaksmaling() throws Exception {
-		boolean decompileSuccess = Baksmali.decompileAndInstrument(OUTPUT_DIR+"/classes.dex", 15, OUTPUT_DIR+"/smali");
+		// Determine if support APIs should be used while baksmaling
+        String minSdkVersion = Utils.getApkMinSdkVersion(INPUT_DIR + "/" + APK_NAME);
+        boolean shudUseSupportAPI = Integer.parseInt(minSdkVersion, 16) < HONEYCOMB_VERSION;
+		boolean decompileSuccess = Baksmali.decompileAndInstrument(OUTPUT_DIR+"/classes.dex", 15, OUTPUT_DIR+"/smali", shudUseSupportAPI);
 		Assert.assertTrue("Baksmaling failed", decompileSuccess);
 	}
 	
 	@Test
 	public void testCopyWrapperCode() throws Exception {
-		File srcSmaliDir = new File(Utils.getInstrumentationPath() + "wrapper/com/imaginea/instrumentation");
-		File destSmaliDir = new File(OUTPUT_DIR+"/smali");
-		destSmaliDir = new File(destSmaliDir, "com");
-		destSmaliDir = new File(destSmaliDir, "imaginea");
-		destSmaliDir = new File(destSmaliDir, "instrumentation");
-		destSmaliDir.mkdirs();
-		for (File file : srcSmaliDir.listFiles())
-		{
-			String src = file.getAbsolutePath();
-			String dest = destSmaliDir.getAbsolutePath() + "/" + file.getName();
-			Utils.fileCopy(src, dest);
-		}
+		boolean fileCopySuccess = instrumentation.copyWrapperSmali(OUTPUT_DIR);
+		Assert.assertTrue("smali file copying failed", fileCopySuccess);
 	}
 	
 	@Test
 	public void testSmaling() throws Exception {
-		final String SMALI_PATH  = Utils.getInstrumentationPath() + "smali-2.0.3.jar";
-		String[] cmd = new String[] {
-                "java",
-                "-jar",
-                SMALI_PATH,
-                OUTPUT_DIR+"/smali",
-                "-o",
-                OUTPUT_DIR+"/classes.dex" };
-		 boolean smaliSuccess = Utils.execProcessBuilder(cmd);
+		 boolean smaliSuccess = instrumentation.smaliToDex(OUTPUT_DIR);
 		 Assert.assertTrue("smaling failed", smaliSuccess);	  
 	}
 	
@@ -108,17 +84,18 @@ public class FragmentInstrumentationTest {
 	
 	@Test
 	public void testJarSigner() throws Exception {
-		final String keystoreLocation = Utils.getInstrumentationPath() + "profiling.keystore";
-		final SignatureInfo paramSignatureInfo = new SignatureInfo(
-                keystoreLocation, "pramati123", "Imaginea", "pramati123");
-		boolean signingSuccess = false;
-        try {
-            signingSuccess = JarSigner.signUsingJDKSigner(OUTPUT_DIR
-                    + INSTRUMENTATION_APK, paramSignatureInfo, SDK_PATH);
-        } catch (final IOException e) {
-            e.printStackTrace();
-        }
+		boolean signingSuccess = instrumentation.signAndZipAlign(OUTPUT_DIR, SDK_PATH);
 		Assert.assertTrue("jar signing failed", signingSuccess);
+	}
+	
+	@Test
+	public void testFragmentInstrumentation() throws Exception {
+		testUnPackApk();
+		testBaksmaling();
+		testCopyWrapperCode();
+		testSmaling();
+		testRepackageApk();
+		testJarSigner();
 	}
 
 }

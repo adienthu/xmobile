@@ -14,8 +14,11 @@ package com.imaginea.profiling;
 import java.io.File;
 import java.io.IOException;
 
+import org.apache.commons.io.FileUtils;
+
 import com.imaginea.instrumentation.Apktool;
 import com.imaginea.instrumentation.Aspect;
+import com.imaginea.instrumentation.Baksmali;
 import com.imaginea.instrumentation.JarSigner;
 import com.imaginea.instrumentation.SignatureInfo;
 import com.imaginea.instrumentation.Utils;
@@ -29,7 +32,7 @@ public class Instrumentation {
     /** The instrumentation apk. */
     private final String INSTRUMENTATION_APK = "/Profiling.apk";
     private final String ASPECT_DEX2JAR = "/out.jar";
-    private final String PROFILING_KEYSTORE = "/InstrumentationPackage/profiling.keystore";
+    private final int HONEYCOMB_VERSION = 13;
 
     /**
      * Convert dex2jar.
@@ -102,7 +105,56 @@ public class Instrumentation {
         }
 		return false;
     }
-
+    
+    /**
+     * Copy wrapper smali files
+     */
+    public boolean copyWrapperSmali(final String outputDir) {
+		File srcSmaliDir = new File(Utils.getInstrumentationPath() + "wrapper");
+		File destSmaliDir = new File(outputDir+"/smali");
+		boolean fileCopySuccess = true;
+		try {
+			FileUtils.copyDirectory(srcSmaliDir, destSmaliDir);
+		} catch (IOException e) {
+			fileCopySuccess = false;
+			e.printStackTrace();
+		}
+		return fileCopySuccess;
+	}
+    
+    /**
+     * Smali to dex
+     */
+    public boolean smaliToDex(final String outputDir) {
+    	final String SMALI_PATH  = Utils.getInstrumentationPath() + "smali-2.0.3.jar";
+		String[] cmd = new String[] {
+                "java",
+                "-jar",
+                SMALI_PATH,
+                outputDir+"/smali",
+                "-o",
+                outputDir+"/classes.dex" };
+		 boolean smaliSuccess = Utils.execProcessBuilder(cmd);
+		 return smaliSuccess;
+    }
+    
+    /**
+     * Sign and zipalign
+     */
+    public boolean signAndZipAlign(final String outputDir, final String sdkPath) {
+    	final String keystoreLocation = Utils.getInstrumentationPath() + "profiling.keystore";
+        final SignatureInfo paramSignatureInfo = new SignatureInfo(
+                keystoreLocation, "pramati123", "Imaginea", "pramati123");
+        boolean signingSuccess = false;
+        try {
+        	signingSuccess = JarSigner.signUsingJDKSigner(outputDir
+                    + INSTRUMENTATION_APK, paramSignatureInfo, sdkPath);
+        } catch (final IOException e) {
+            e.printStackTrace();
+        }
+        return signingSuccess;
+    }
+    
     /**
      * Start instrumentation.
      * 
@@ -117,36 +169,42 @@ public class Instrumentation {
             final File outputDir, final String apkName, final String sdkPath,
             final String PackageName) {
         // Unpack the APK File
-        unPackApk(inputDir.getAbsolutePath(), outputDir.getAbsolutePath(),
-                apkName);
-        // Dex to jar converter
-        convertDex2jar(inputDir.getAbsolutePath(), apkName);
-
-        // Apply aspectJ and enable fragment log
-        if(!injectCode2jar(inputDir.getAbsolutePath(), apkName, outputDir.getAbsolutePath(), PackageName))
-            return false;
-
-        // Gets the WorkingDir
-        final String workingDirectory = System.getProperty("user.dir");
-        // JAR to Dex converter
-        jar2DexConverter(workingDirectory, outputDir);
-
-        /* Repackage the APK */
-        repackageApk(outputDir.getAbsolutePath());
-
-        /* Sign the APK file */
-        final String keystoreLocation = workingDirectory + PROFILING_KEYSTORE;
-        final SignatureInfo paramSignatureInfo = new SignatureInfo(
-                keystoreLocation, "pramati123", "Imaginea", "pramati123");
-        try {
-            JarSigner.signUsingJDKSigner(outputDir.getAbsolutePath()
-                    + INSTRUMENTATION_APK, paramSignatureInfo, sdkPath);
-        } catch (final IOException e) {
-            e.printStackTrace();
+        if(!unPackApk(inputDir.getAbsolutePath(), outputDir.getAbsolutePath(),
+                apkName)) {
+        	return false;
+        }
+        
+        // Determine if support APIs should be used while baksmaling
+        String minSdkVersion = Utils.getApkMinSdkVersion(inputDir.getAbsolutePath() + "/" + apkName);
+        boolean shudUseSupportAPI = Integer.parseInt(minSdkVersion, 16) < HONEYCOMB_VERSION;
+        // Decompile using custom baksmali
+        String dexPath = outputDir.getAbsolutePath()+"/classes.dex";
+        String outDir = outputDir.getAbsolutePath()+"/smali";
+        if(!Baksmali.decompileAndInstrument(dexPath, 15, outDir, shudUseSupportAPI)) {
+        	return false;
+        }
+        
+        // Copy wrapper code
+        if(!copyWrapperSmali(outputDir.getAbsolutePath())) {
+        	return false;
+        }
+        
+        // Recompile to dex
+        if(!smaliToDex(outputDir.getAbsolutePath())) {
+        	return false;
         }
 
-        return true;
+        // Repackage the APK
+        if(!repackageApk(outputDir.getAbsolutePath())) {
+        	return false;
+        }
 
+        // Sign the APK file and zipalign
+        if(!signAndZipAlign(outputDir.getAbsolutePath(), sdkPath)) {
+        	return false;
+        }
+        
+        return true;
     }
 
     /**
