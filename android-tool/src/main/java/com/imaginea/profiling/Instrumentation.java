@@ -174,13 +174,10 @@ public class Instrumentation {
         	return false;
         }
         
-        // Determine if support APIs should be used while baksmaling
-        String minSdkVersion = Utils.getApkMinSdkVersion(inputDir.getAbsolutePath() + "/" + apkName);
-        boolean shudUseSupportAPI = Integer.parseInt(minSdkVersion, 16) < HONEYCOMB_VERSION;
         // Decompile using custom baksmali
         String dexPath = outputDir.getAbsolutePath()+"/classes.dex";
         String outDir = outputDir.getAbsolutePath()+"/smali";
-        if(!Baksmali.decompileAndInstrument(dexPath, 15, outDir, shudUseSupportAPI)) {
+        if(!Baksmali.decompileAndInstrument(dexPath, 15, outDir)) {
         	return false;
         }
         

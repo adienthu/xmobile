@@ -20,7 +20,7 @@ public class Baksmali
 {
   public static final String TAG = "Baksmali";
 
-  public static boolean decompileAndInstrument(String dexPath, int apiLevel, String outDir, boolean shudUseSupportAPI)
+  public static boolean decompileAndInstrument(String dexPath, int apiLevel, String outDir)
   {
     File localFile = new File(dexPath);
     if (!localFile.exists())
@@ -68,8 +68,6 @@ public class Baksmali
     localbaksmaliOptions.transform = true;
 //    localbaksmaliOptions.outputDebugInfo = Platform.inDebugMode();
     localbaksmaliOptions.outputTransformInfo = true;
-    if(shudUseSupportAPI)
-    	umbreyta.useSupportAPI();
     return baksmali.disassembleDexFile(localDexBackedDexFile, localbaksmaliOptions);
   }
 

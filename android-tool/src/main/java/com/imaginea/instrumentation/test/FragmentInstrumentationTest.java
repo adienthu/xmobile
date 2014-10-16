@@ -30,7 +30,6 @@ public class FragmentInstrumentationTest {
 	private final String OUTPUT_DIR = INPUT_DIR + "/out";
 	private final String APK_NAME = "com.imdb.mobile-1.apk";//"SimpleRESTClient.apk";
 	private final String SDK_PATH = "/Users/adityad/Developer/adt-bundle-mac-x86_64-20140321/sdk";
-	private final int HONEYCOMB_VERSION = 13;
 	
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
@@ -57,10 +56,7 @@ public class FragmentInstrumentationTest {
 	
 	@Test
 	public void testBaksmaling() throws Exception {
-		// Determine if support APIs should be used while baksmaling
-        String minSdkVersion = Utils.getApkMinSdkVersion(INPUT_DIR + "/" + APK_NAME);
-        boolean shudUseSupportAPI = Integer.parseInt(minSdkVersion, 16) < HONEYCOMB_VERSION;
-		boolean decompileSuccess = Baksmali.decompileAndInstrument(OUTPUT_DIR+"/classes.dex", 15, OUTPUT_DIR+"/smali", shudUseSupportAPI);
+		boolean decompileSuccess = Baksmali.decompileAndInstrument(OUTPUT_DIR+"/classes.dex", 15, OUTPUT_DIR+"/smali");
 		Assert.assertTrue("Baksmaling failed", decompileSuccess);
 	}
 	
